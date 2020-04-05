@@ -158,36 +158,26 @@ export default {
       const points = [
         {
           id: 1,
-          name: '兔子',
+          name: '红枣新疆特产灰枣红枣',
           lineId: 1,
           pre: { 'id': 8, 'name': '西宁', 'value': [101.82139605321802, 36.62634069485973] },
           next: { 'id': 9, 'name': '乌鲁木齐', 'value': [87.53582115349052, 43.847009771041094] },
-          travlled: 0.3
-        },
-        {
-          id: 2,
-          name: '乌龟',
-          lineId: 1,
-          pre: { 'id': 5, 'name': '太原', 'value': [112.61726434350447, 37.79736828479828] },
-          next: { 'id': 4, 'name': '石家庄', 'value': [114.4712305290683, 38.07207484076872] },
-          travlled: 0.3
+          travlled: 0.3,
+          speed:'81km/h',
+          express_id:'29028193178332342',
+          img:'https://gaitaobao2.alicdn.com/tfscom/i1/2206510748148/O1CN01CcN5px2A3pj9CXz5M_!!2206510748148.jpg_240x240xz.jpg_.webp',
         },
         {
           id: 22,
-          name: '火箭',
+          name: '王味螺螺蛳粉253克*10',
           lineId: 2,
           pre: { "id": 18, "name": "长沙", "value": [113.071503, 28.152942] },
           next: { "id": 19, "name": "广州", "value": [113.264437, 23.154981] },
-          travlled: 0.3
+          travlled: 0.3,
+          speed:'89km/h',
+          express_id:'7843627483526545',
+          img:'https://img.alicdn.com/imgextra/i4/2206448209116/O1CN01VO5B8R2HDB7xvf4Ol_!!0-item_pic.jpg_430x430q90.jpg',
         },
-        {
-          id: 3,
-          name: '带鱼',
-          lineId: 2,
-          pre: { 'id': 11, 'name': '哈尔滨', 'value': [126.71808, 45.794479] },
-          next: { 'id': 12, 'name': '长春', 'value': [125.330802, 43.917542] },
-          travlled: 0.3
-        }
       ]
 
       const getMiddlePoint = (start, end, percent) => {
@@ -200,8 +190,10 @@ export default {
         const  pointsOnLine = points.filter(v => v.lineId === line.id)
         if ( pointsOnLine &&  pointsOnLine.length > 0) {
           const data =  pointsOnLine.map(train => {
-            const formatter = `{p2|${train.name}}
-                              {p3|\n当前车速：400km/h}
+            const formatter = `{img|}
+                              {p2|\n${train.name}}
+                              {p4|\n快递单号：${train.express_id}}
+                              {p3|\n当前车速：${train.speed}}
                               {p4|\n即将到达：${train.next.name}}`
             return {
               itemStyle: {
@@ -218,8 +210,9 @@ export default {
                   rich: {
                     img: {
                       backgroundColor: {
-                        image: train.screenshot
-                      }
+                        image: train.img,
+                      },
+                      height:100,
                     }
                   }
                 }
@@ -244,7 +237,7 @@ export default {
             label: { // 鼠标浮动到特效点上时会显示标签
               normal: {
                 show: false,
-                position: ['150%', '150%'],
+                position: ['100%', '100%'],
                 distance: 5,
                 color: '#222222',
                 align: 'center',
@@ -255,7 +248,7 @@ export default {
                 shadowBlur: 6,
                 shadowOffsetX: 0,
                 shadowOffsetY: 3,
-                width: 200,
+                width: 250,
                 rich: { // 富文本标签样式 
                   p2: {
                     fontSize: 16,
