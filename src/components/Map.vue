@@ -43,6 +43,7 @@
     name: 'Map',
     data () {
       return {
+        ws:null,
         active:1,
         //一旦初始化就不再更改
         baseLinesData:[],
@@ -93,6 +94,7 @@
     methods: {
       initAll() {
         this.getOrdersOption();
+        this.initPointsWs();
         this.getLinesData();
       },
 
@@ -101,6 +103,22 @@
         this.$http.get("http://localhost:6789/orders").then(response => {
             this.orderList = response.data;
         });
+      },
+
+      initPointsWs(){
+        this.ws = new WebSocket('ws://localhost:6789/points');
+        this.ws.onopen = function(evt) {
+          console.log("Connection open ...");
+        };
+
+        this.ws.onmessage = event =>  {
+          this.points = JSON.parse(event.data);
+          this.refreshSeries();
+        };
+
+        this.ws.onclose = function(evt) {
+          console.log("Connection closed.");
+        };
       },
 
       handleSearch(){
@@ -293,93 +311,99 @@
 
         this.linesData.forEach(line => {
           const pointsOnLine = points.filter(v => v.id === line.id);
-          if ( pointsOnLine &&  pointsOnLine.length > 0) {
-            const data =  pointsOnLine.map(point => {
-              const formatter = `{img|}
-                              {p2|\n${point.name}}
-                              {p4|\n订单号：${point.id}}
-                              {p3|\n当前车速：${point.speed}km/h}
-                              {p4|\n即将到达：${point.pre.name}}`;
-              return {
-                itemStyle: {
-                  normal: {
-                    color: 'red'
-                  },
-                  emphasis: {
-                    color: 'red'
-                  }
-                },
-                label: {
-                  normal: {
-                    formatter,
-                    rich: {
-                      img: {
-                        backgroundColor: {
-                          image: point.img_url,
-                        },
-                        height:100,
-                      }
-                    }
-                  }
-                },
-                value: getMiddlePoint(point.pre.value, point.next.value, point.travelled)
-              }
-            });
-            series.push({
-              name: line.name,
-              type: 'effectScatter', // 带有涟漪特效动画的散点（气泡）图
-              coordinateSystem: 'bmap',
-              symbol: this.carIcon, // 使用自定义的SVG图标
-              symbolSize: [40, 40],
-              legendHoverLink: false,
-              z: 6,
-              effectType: 'ripple',
-              rippleEffect: {
-                period: 5, // 涟漪特效的动画周期
-                scale: 1, // 涟漪特效动画中波纹的最大缩放比例
-                brushType: 'fill' // 涟漪特效的波纹绘制方式
-              },
-              label: { // 鼠标浮动到特效点上时会显示标签
+          console.log("pointsOnLine:", pointsOnLine);
+          const data =  pointsOnLine.map(point => {
+            let formatter = `{img|}
+                            {p2|\n${point.name}}
+                            {p4|\n订单号：${point.id}}
+                            {p3|\n当前车速：${point.speed}km/h}
+                            {p4|\n即将到达：${point.next_name}}`;
+            if (point.speed === 0) {
+              formatter = `{img|}
+                          {p2|\n${point.name}}
+                          {p4|\n订单号：${point.id}}
+                          {p3|\n目前到达：${point.next_name}}
+                          {p4|\n等待下一阶段运输}`;
+            }
+            return {
+              itemStyle: {
                 normal: {
-                  show: false,
-                  position: ['100%', '100%'],
-                  distance: 5,
-                  color: '#222222',
-                  align: 'center',
-                  backgroundColor: '#FFFFFF',
-                  borderRadius: 5,
-                  padding: 20,
-                  shadowColor: 'rgba(0,0,0,0.16)',
-                  shadowBlur: 6,
-                  shadowOffsetX: 0,
-                  shadowOffsetY: 3,
-                  width: 250,
-                  rich: { // 富文本标签样式
-                    p2: {
-                      fontSize: 16,
-                      color: '#222222',
-                      fontWeight: 'bolder',
-                      lineHeight: 40
-                    },
-                    p3: {
-                      fontSize: 14,
-                      color: '#222222',
-                      lineHeight: 18
-                    },
-                    p4: {
-                      fontSize: 14,
-                      color: '#222222',
-                      lineHeight: 18
-                    }
-                  }
+                  color: 'red'
                 },
                 emphasis: {
-                  show: true
+                  color: 'red'
                 }
               },
-              data: data
-            })
-          }
+              label: {
+                normal: {
+                  formatter,
+                  rich: {
+                    img: {
+                      backgroundColor: {
+                        image: point.img_url,
+                      },
+                      height:100,
+                    }
+                  }
+                }
+              },
+              value: getMiddlePoint(point.pre, point.next, point.travelled)
+            }
+          });
+          series.push({
+            name: line.name,
+            type: 'effectScatter', // 带有涟漪特效动画的散点（气泡）图
+            coordinateSystem: 'bmap',
+            symbol: this.carIcon, // 使用自定义的SVG图标
+            symbolSize: [40, 40],
+            legendHoverLink: false,
+            z: 6,
+            effectType: 'ripple',
+            rippleEffect: {
+              period: 5, // 涟漪特效的动画周期
+              scale: 1, // 涟漪特效动画中波纹的最大缩放比例
+              brushType: 'fill' // 涟漪特效的波纹绘制方式
+            },
+            label: { // 鼠标浮动到特效点上时会显示标签
+              normal: {
+                show: false,
+                position: ['100%', '100%'],
+                distance: 5,
+                color: '#222222',
+                align: 'center',
+                backgroundColor: '#FFFFFF',
+                borderRadius: 5,
+                padding: 20,
+                shadowColor: 'rgba(0,0,0,0.16)',
+                shadowBlur: 6,
+                shadowOffsetX: 0,
+                shadowOffsetY: 3,
+                width: 250,
+                rich: { // 富文本标签样式
+                  p2: {
+                    fontSize: 16,
+                    color: '#222222',
+                    fontWeight: 'bolder',
+                    lineHeight: 40
+                  },
+                  p3: {
+                    fontSize: 14,
+                    color: '#222222',
+                    lineHeight: 18
+                  },
+                  p4: {
+                    fontSize: 14,
+                    color: '#222222',
+                    lineHeight: 18
+                  }
+                }
+              },
+              emphasis: {
+                show: true
+              }
+            },
+            data: data
+          })
         });
         this.effectScatterSeries = series
       },
