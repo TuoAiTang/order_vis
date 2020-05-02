@@ -87,26 +87,22 @@
         carIcon: `image://https://tuocheng.oss-cn-beijing.aliyuncs.com/UTOOLS1586013674763.png`,
       }
     },
-    async mounted () {
-      await this.initAll();
+    mounted () {
+      this.initAll();
     },
     methods: {
-      async initAll() {
-        await Promise.all([
-          this.getOrdersOption(),
-          this.getLinesData()
-        ]);
-        this.initMap()
+      initAll() {
+        this.getOrdersOption();
+        this.getLinesData();
       },
+
       getOrdersOption() {
         this.orderList = [];
-        return new Promise((res,rej)=>{
-          this.$http.get("http://localhost:6789/orders").then(response => {
+        this.$http.get("http://localhost:6789/orders").then(response => {
             this.orderList = response.data;
-            res();
-          })
-        })
+        });
       },
+
       handleSearch(){
         console.log("orders:", this.orders);
         let linesData = [];
@@ -146,16 +142,13 @@
       },
       getLinesData: function () {
         console.log("getLinesData");
-        return new Promise((res,rej)=>{
-          this.$http.get("http://localhost:6789/lines").then(response => {
-            console.log("response.data:", response.data);
-            this.linesData = [];
-            this.baseLinesData = response.data;
-            console.log("回调函数里面：this.linesData:", this.linesData);
-            res()
-          });
-        })
-
+        this.$http.get("http://localhost:6789/lines").then(response => {
+          console.log("response.data:", response.data);
+          this.linesData = [];
+          this.baseLinesData = response.data;
+          this.initMap();
+          console.log("回调函数里面：this.linesData:", this.linesData);
+        });
       },
       initMap () {
         this.chart = this.$echarts.init(document.getElementById("main"));
