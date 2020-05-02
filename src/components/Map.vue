@@ -1,16 +1,39 @@
 <template>
-  <div ref="map" class="map" id="main" style="width:100%; height: 1000px;"></div>
+  <div class="container">
+    <div class="handle-box">
+      <el-select
+        v-model="orders"
+        placeholder="订单列表"
+        class="handle-input handle-select mr10"
+        multiple
+      >
+        <el-option
+          v-for="order in orderList"
+          :key="order.name"
+          :label="order.name"
+          :value="order.id"
+        ></el-option>
+      </el-select>
+
+      <el-button type="primary" icon="el-icon-search" @click="handleSearch">
+        搜索
+      </el-button>
+    </div>
+    <div ref="map" class="map" id="main"></div>
+  </div>
 </template>
 
 <script>
 /* eslint-disable */
-import linesData from '../data/lines-data.json'
 import mapConfig from '../data/map-config.json'
-
+import linesDataJson from '../data/lines-data.json'
 export default {
   name: 'Map',
   data () {
     return {
+      linesData:linesDataJson,
+      orderList:[],
+      orders:[],
       chart: this.$echarts.ECharts,
       bmap: {},
       points:[
@@ -70,12 +93,41 @@ export default {
     }
   },
   mounted () {
-    this.initMap();
+    this.initAll();
   },
   methods: {
-    refreshMap(){
-      // setInterval(refreshSeries, 3);
-      var points = this.points;
+    initAll() {
+      this.getOrdersOption();
+      this.getLinesData();
+      this.initMap();
+    },
+    getOrdersOption() {
+      this.orderList = [];
+      this.$http.get("http://localhost:6789/orders").then(response => {
+        this.orderList = response.data
+      })
+    },
+    handleSearch(){
+      console.log("orders:", this.orders);
+      let linesData = [];
+      for(let i = 0; i < this.linesData.length; i++){
+        let line = this.linesData[i];
+        for(let j = 0; j < this.orders.length; j++) {
+          if (this.orders[i] === line.id){
+            linesData.push(line);
+            break;
+          }
+        }
+      }
+      // let linesData = this.linesData.filter(line => {
+      //   for(let j = 0; j < this.orders.length; j++) {
+      //     if (this.orders[i] === line.id){
+      //       return true;
+      //     }
+      //   }
+      //   return false;
+      // });
+      this.linesData = linesData;
       var add = (function(){
         var counter = 0;
         return function(){
@@ -85,15 +137,29 @@ export default {
           return(++counter);
         }
       })();
-      setInterval(this.refreshSeries, 2000, points, add);
+      this.refreshSeries(this.points, add);
     },
-    refreshSeries(points, add){
-      console.log("refreshSeries")
-      let flag = Math.random();
-      this.points = [points[add()], points[3]],
-      this.getLineSeries()
-      this.getScatterSeries()
-      this.getEffectScatterSeries()
+
+    // refreshMap(){
+    //   // setInterval(refreshSeries, 3);
+    //   var points = this.points;
+    //   var add = (function(){
+    //     var counter = 0;
+    //     return function(){
+    //       if (counter === 2) {
+    //         counter = -1
+    //       }
+    //       return(++counter);
+    //     }
+    //   })();
+    //   setInterval(this.refreshSeries, 1000, points, add);
+    // },
+
+    refreshSeries(){
+      console.log("refreshSeries");
+      this.getLineSeries();
+      this.getScatterSeries();
+      this.getEffectScatterSeries();
       this.chart.setOption({
         series:[
           ...this.linesSeries, // 带有起点和终点信息的线数据的绘制
@@ -102,11 +168,20 @@ export default {
         ]
       })
     },
+    getLinesData: function () {
+      console.log("getLinesData");
+      this.$http.get("http://localhost:6789/lines").then(response => {
+        console.log("response.data:", response.data);
+        this.linesData = response.data;
+        console.log("回调函数里面：this.linesData:", this.linesData)
+      });
+    },
     initMap () {
       this.chart = this.$echarts.init(document.getElementById("main"));
-      this.getLineSeries()
-      this.getScatterSeries()
-      this.getEffectScatterSeries()
+      console.log("this.linesData:", this.linesData);
+      this.getLineSeries();
+      this.getScatterSeries();
+      this.getEffectScatterSeries();
 
       this.chart.setOption({
         animation: false,
@@ -114,7 +189,7 @@ export default {
           orient: 'vertical',
           top: 30,
           left: 30,
-          data: linesData.map(v => v.name),
+          data: this.linesData.map(v => v.name),
           textStyle: {
             color: '#222222'
           },
@@ -124,7 +199,6 @@ export default {
           center: [104.114129, 37.550339],
           zoom: 6, // 地图当前的缩放比例
           roam: true, // 开启鼠标缩放和平移漫游
-          // scaleLimit: { min: 6, max: 12 }, // echarts设置地图最小最大缩放比例的接口不起作用，要使用百度地图的接口设置
           mapStyle: {
             styleJson: mapConfig
           }
@@ -134,23 +208,24 @@ export default {
           ...this.scatterSeries, // 散点（气泡）图
           ...this.effectScatterSeries // 带有涟漪特效动画的散点（气泡）图
         ]
-      })
+      });
       // 获取百度地图实例，使用百度地图自带的控件
-      this.bmap = this.chart.getModel().getComponent('bmap').getBMap()
-      this.bmap.setMinZoom(6) // 设置地图最小缩放比例
-      this.bmap.setMaxZoom(12) // 设置地图最大缩放比例
+      this.bmap = this.chart.getModel().getComponent('bmap').getBMap();
+      this.bmap.setMinZoom(6);// 设置地图最小缩放比例
+      this.bmap.setMaxZoom(12); // 设置地图最大缩放比例
       // this.bmap.addControl(new BMap.MapTypeControl({ mapTypes: [] })) // 不显示地图右上方的控件
-      this.bmap.addControl(new BMap.ScaleControl({ anchor: BMAP_ANCHOR_BOTTOM_LEFT })) // 在左下角显示比例尺控件
-      const _this = this
+      this.bmap.addControl(new BMap.ScaleControl({ anchor: BMAP_ANCHOR_BOTTOM_LEFT }));// 在左下角显示比例尺控件
+      const _this = this;
       // 监听地图比例缩放， 可以根据缩放等级控制某些图标的显示
       this.bmap.addEventListener('zoomend', function () {
         _this.mapZoom = _this.bmap.getZoom()
-      })
-      this.refreshMap();
+      });
     },
     getLineSeries () {
-      let series = []
-      linesData.forEach(line => {
+      let series = [];
+      console.log("getLineSeries");
+      console.log("this.linesData:", this.linesData);
+      this.linesData.forEach(line => {
         series.push({
           name: line.name,
           type: 'lines',
@@ -191,13 +266,13 @@ export default {
             }
           ]
         })
-      })
-
+      });
+      console.log("series:", series);
       this.linesSeries = series
     },
     getScatterSeries () {
-      let series = []
-      linesData.forEach(line => {
+      let series = [];
+      this.linesData.forEach(line => {
         series.push({
           name: line.name,
           type: 'scatter',
@@ -230,23 +305,23 @@ export default {
       this.scatterSeries = series
     },
     getEffectScatterSeries () {
-      let series = []
-      const points = this.points
+      let series = [];
+      const points = this.points;
       const getMiddlePoint = (start, end, percent) => {
-        const x = start[0] + (end[0] - start[0]) * percent
-        const y = start[1] + (end[1] - start[1]) * percent
+        const x = start[0] + (end[0] - start[0]) * percent;
+        const y = start[1] + (end[1] - start[1]) * percent;
         return [x, y]
-      }
+      };
 
-      linesData.forEach(line => {
-        const  pointsOnLine = points.filter(v => v.lineId === line.id)
+      this.linesData.forEach(line => {
+        const pointsOnLine = points.filter(v => v.lineId === line.id);
         if ( pointsOnLine &&  pointsOnLine.length > 0) {
           const data =  pointsOnLine.map(train => {
             const formatter = `{img|}
                               {p2|\n${train.name}}
                               {p4|\n快递单号：${train.express_id}}
                               {p3|\n当前车速：${train.speed}}
-                              {p4|\n即将到达：${train.pre.name}}`
+                              {p4|\n即将到达：${train.pre.name}}`;
             return {
               itemStyle: {
                 normal: {
@@ -271,7 +346,7 @@ export default {
               },
               value: getMiddlePoint(train.pre.value, train.next.value, train.travlled)
             }
-          })
+          });
           series.push({
             name: line.name,
             type: 'effectScatter', // 带有涟漪特效动画的散点（气泡）图
@@ -337,6 +412,34 @@ export default {
 <style scoped>
 .map {
   width: 100%;
-  height: 100%;
+  height: 800px;
+}
+.handle-box {
+  margin-bottom: 20px;
+}
+
+.handle-select {
+  width: 120px;
+}
+
+.handle-input {
+  width: 300px;
+  display: inline-block;
+}
+.table {
+  width: 100%;
+  font-size: 14px;
+}
+.red {
+  color: #ff0000;
+}
+.mr10 {
+  margin-right: 10px;
+}
+.table-td-thumb {
+  display: block;
+  margin: auto;
+  width: 40px;
+  height: 40px;
 }
 </style>
